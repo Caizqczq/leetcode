@@ -144,8 +144,7 @@ const statusPieOption = computed(() => {
         },
         data: [
           { value: stats.value.status_stats.not_started, name: '未开始', itemStyle: { color: '#909399' } },
-          { value: stats.value.status_stats.attempted, name: '已尝试', itemStyle: { color: '#409EFF' } },
-          { value: stats.value.status_stats.reviewing, name: '复习中', itemStyle: { color: '#E6A23C' } },
+          { value: stats.value.status_stats.in_progress, name: '进行中', itemStyle: { color: '#409EFF' } },
           { value: stats.value.status_stats.mastered, name: '已掌握', itemStyle: { color: '#67C23A' } },
         ]
       }
@@ -294,8 +293,8 @@ const dailyLineOption = computed(() => {
           <div class="overview-label">完成率</div>
         </div>
         <div class="card overview-card">
-          <div class="overview-value" style="color: #E6A23C">{{ stats.status_stats.reviewing }}</div>
-          <div class="overview-label">复习中</div>
+          <div class="overview-value" style="color: #409EFF">{{ stats.status_stats.in_progress }}</div>
+          <div class="overview-label">进行中</div>
         </div>
       </div>
 

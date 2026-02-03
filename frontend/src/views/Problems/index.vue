@@ -2,16 +2,16 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProblemStore } from '../../stores/problem'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const store = useProblemStore()
 
+// 新状态选项（简化为3种）
 const statusOptions = [
   { label: '全部状态', value: '' },
   { label: '未开始', value: 'not_started' },
-  { label: '已尝试', value: 'attempted' },
-  { label: '复习中', value: 'reviewing' },
+  { label: '进行中', value: 'in_progress' },
   { label: '已掌握', value: 'mastered' },
 ]
 
@@ -22,11 +22,8 @@ const difficultyOptions = [
   { label: '困难', value: 'Hard' },
 ]
 
-// 状态更新对话框
-const statusDialogVisible = ref(false)
-const currentProblem = ref<any>(null)
-const newStatus = ref('')
-const newMastery = ref(0)
+// 加载状态
+const completingId = ref<number | null>(null)
 
 onMounted(async () => {
   await Promise.all([
@@ -52,25 +49,35 @@ const goToDetail = (row: any) => {
   router.push(`/problems/${row.id}`)
 }
 
-// 打开状态更新对话框
-const openStatusDialog = (row: any) => {
-  currentProblem.value = row
-  newStatus.value = row.progress?.status || 'not_started'
-  newMastery.value = row.progress?.mastery_level || 0
-  statusDialogVisible.value = true
-}
+// 一键完成
+const handleComplete = async (row: any) => {
+  // 如果已掌握，不需要再次完成
+  if (row.progress?.status === 'mastered') {
+    ElMessage.info('该题目已掌握')
+    return
+  }
 
-// 更新状态
-const handleUpdateStatus = async () => {
-  if (!currentProblem.value) return
-  
   try {
-    await store.updateProgress(currentProblem.value.id, newStatus.value, newMastery.value)
-    ElMessage.success('状态更新成功')
-    statusDialogVisible.value = false
-    store.fetchProblems()
-  } catch (error) {
-    ElMessage.error('更新失败')
+    await ElMessageBox.confirm(
+      `确认已完成 "${row.leetcode_id}. ${row.title_cn}" 的练习吗？`,
+      '标记完成',
+      {
+        confirmButtonText: '确认完成',
+        cancelButtonText: '取消',
+        type: 'success',
+      }
+    )
+
+    completingId.value = row.id
+    await store.markComplete(row.id)
+    ElMessage.success('已完成！系统已自动生成复习计划')
+  } catch (error: any) {
+    // 用户取消操作不提示错误
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  } finally {
+    completingId.value = null
   }
 }
 
@@ -88,11 +95,20 @@ const getStatusClass = (status: string) => {
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
     'not_started': '未开始',
-    'attempted': '已尝试',
-    'reviewing': '复习中',
+    'in_progress': '进行中',
     'mastered': '已掌握',
   }
   return map[status] || status
+}
+
+// 获取复习进度文本
+const getReviewProgress = (progress: any) => {
+  if (!progress || progress.status === 'not_started') {
+    return ''
+  }
+  const completed = progress.completed_reviews || progress.mastery_level || 0
+  const total = progress.total_reviews || 5
+  return `${completed}/${total}轮`
 }
 
 // 打开 LeetCode 链接
@@ -195,24 +211,33 @@ const openLeetCode = (url: string) => {
         
         <el-table-column prop="category" label="分类" width="120" />
         
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="140">
           <template #default="{ row }">
-            <span
-              class="status-tag"
-              :class="getStatusClass(row.progress?.status || 'not_started')"
-            >
-              {{ getStatusText(row.progress?.status || 'not_started') }}
-            </span>
+            <div class="status-cell">
+              <span
+                class="status-tag"
+                :class="getStatusClass(row.progress?.status || 'not_started')"
+              >
+                {{ getStatusText(row.progress?.status || 'not_started') }}
+              </span>
+              <span v-if="getReviewProgress(row.progress)" class="review-progress">
+                {{ getReviewProgress(row.progress) }}
+              </span>
+            </div>
           </template>
         </el-table-column>
         
-        <el-table-column label="掌握度" width="140">
+        <el-table-column label="复习进度" width="140">
           <template #default="{ row }">
-            <el-rate
-              :model-value="row.progress?.mastery_level || 0"
-              disabled
-              size="small"
-            />
+            <template v-if="row.progress && row.progress.status !== 'not_started'">
+              <el-progress
+                :percentage="((row.progress.completed_reviews || row.progress.mastery_level || 0) / 5) * 100"
+                :stroke-width="8"
+                :show-text="false"
+                :status="row.progress.status === 'mastered' ? 'success' : undefined"
+              />
+            </template>
+            <span v-else class="no-progress">-</span>
           </template>
         </el-table-column>
         
@@ -235,8 +260,15 @@ const openLeetCode = (url: string) => {
             <el-button type="primary" link size="small" @click="goToDetail(row)">
               详情
             </el-button>
-            <el-button type="success" link size="small" @click="openStatusDialog(row)">
-              更新状态
+            <el-button
+              type="success"
+              link
+              size="small"
+              :loading="completingId === row.id"
+              :disabled="row.progress?.status === 'mastered'"
+              @click="handleComplete(row)"
+            >
+              {{ row.progress?.status === 'mastered' ? '已完成' : '完成' }}
             </el-button>
             <el-button type="warning" link size="small" @click="openLeetCode(row.url)">
               LeetCode
@@ -245,30 +277,6 @@ const openLeetCode = (url: string) => {
         </el-table-column>
       </el-table>
     </div>
-
-    <!-- 状态更新对话框 -->
-    <el-dialog v-model="statusDialogVisible" title="更新刷题状态" width="400px">
-      <el-form label-width="80px">
-        <el-form-item label="题目">
-          <span>{{ currentProblem?.leetcode_id }}. {{ currentProblem?.title_cn }}</span>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="newStatus" style="width: 100%">
-            <el-option label="未开始" value="not_started" />
-            <el-option label="已尝试" value="attempted" />
-            <el-option label="复习中" value="reviewing" />
-            <el-option label="已掌握" value="mastered" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="掌握度">
-          <el-rate v-model="newMastery" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="statusDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateStatus">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -306,5 +314,29 @@ const openLeetCode = (url: string) => {
   font-size: 12px;
   color: var(--text-secondary);
   margin-top: 2px;
+}
+
+.status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-progress {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.no-progress {
+  color: var(--text-secondary);
+}
+
+/* 状态标签样式 */
+.status-tag.status-in_progress {
+  color: var(--primary-color);
+  background: rgba(64, 158, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 </style>

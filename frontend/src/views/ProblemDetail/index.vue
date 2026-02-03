@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { problemApi, progressApi, noteApi, tagApi } from '../../api'
 import { useProblemStore } from '../../stores/problem'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,13 +21,15 @@ const note = ref<any>({
   key_points: '',
 })
 const saving = ref(false)
-
-// 状态编辑
-const status = ref('not_started')
-const masteryLevel = ref(0)
+const completing = ref(false)
 
 // 标签管理
 const selectedTagId = ref<number | undefined>(undefined)
+
+// 高级选项（手动调整状态）
+const showAdvanced = ref(false)
+const manualStatus = ref('not_started')
+const manualMastery = ref(0)
 
 const languageOptions = [
   { label: 'Python', value: 'python' },
@@ -51,8 +53,8 @@ onMounted(async () => {
 async function fetchProblem() {
   try {
     problem.value = await problemApi.getDetail(problemId.value)
-    status.value = problem.value.progress?.status || 'not_started'
-    masteryLevel.value = problem.value.progress?.mastery_level || 0
+    manualStatus.value = problem.value.progress?.status || 'not_started'
+    manualMastery.value = problem.value.progress?.mastery_level || 0
   } catch (error) {
     ElMessage.error('获取题目失败')
     router.push('/problems')
@@ -87,14 +89,46 @@ async function saveNote() {
   }
 }
 
-// 更新进度
-async function updateProgress() {
+// 一键完成
+async function handleComplete() {
+  if (problem.value?.progress?.status === 'mastered') {
+    ElMessage.info('该题目已掌握')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      '确认已完成本题的练习吗？',
+      '标记完成',
+      {
+        confirmButtonText: '确认完成',
+        cancelButtonText: '取消',
+        type: 'success',
+      }
+    )
+
+    completing.value = true
+    await progressApi.complete(problemId.value)
+    ElMessage.success('已完成！系统已自动生成复习计划')
+    await fetchProblem()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  } finally {
+    completing.value = false
+  }
+}
+
+// 手动更新进度（高级选项）
+async function updateProgressManually() {
   try {
     await progressApi.update(problemId.value, {
-      status: status.value,
-      mastery_level: masteryLevel.value,
+      status: manualStatus.value,
+      mastery_level: manualMastery.value,
     })
-    ElMessage.success('状态更新成功')
+    ElMessage.success('状态已手动更新')
+    showAdvanced.value = false
     await fetchProblem()
   } catch (error) {
     ElMessage.error('更新失败')
@@ -152,12 +186,33 @@ const getDifficultyClass = (difficulty: string) => {
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
     'not_started': '未开始',
-    'attempted': '已尝试',
-    'reviewing': '复习中',
+    'in_progress': '进行中',
     'mastered': '已掌握',
   }
   return map[status] || status
 }
+
+// 获取状态样式类
+const getStatusClass = (status: string) => {
+  return `status-${status}`
+}
+
+// 计算复习进度
+const reviewProgress = computed(() => {
+  const progress = problem.value?.progress
+  if (!progress) return { completed: 0, total: 5, percentage: 0 }
+  
+  const completed = progress.completed_reviews ?? progress.mastery_level ?? 0
+  const total = progress.total_reviews ?? 5
+  const percentage = (completed / total) * 100
+  
+  return { completed, total, percentage }
+})
+
+// 是否可以标记完成
+const canComplete = computed(() => {
+  return problem.value?.progress?.status !== 'mastered'
+})
 </script>
 
 <template>
@@ -226,25 +281,87 @@ const getStatusText = (status: string) => {
         </div>
       </div>
 
-      <!-- 进度状态 -->
+      <!-- 刷题状态（简化版） -->
       <div class="card progress-section">
-        <h3 class="card-title">刷题状态</h3>
-        <el-form :inline="true">
-          <el-form-item label="当前状态">
-            <el-select v-model="status" style="width: 140px">
-              <el-option label="未开始" value="not_started" />
-              <el-option label="已尝试" value="attempted" />
-              <el-option label="复习中" value="reviewing" />
-              <el-option label="已掌握" value="mastered" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="掌握程度">
-            <el-rate v-model="masteryLevel" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="updateProgress">更新状态</el-button>
-          </el-form-item>
-        </el-form>
+        <div class="progress-header">
+          <h3 class="card-title">刷题状态</h3>
+          <el-button
+            v-if="canComplete"
+            type="success"
+            :loading="completing"
+            @click="handleComplete"
+          >
+            <el-icon><Check /></el-icon>
+            标记完成
+          </el-button>
+          <el-tag v-else type="success" size="large">
+            <el-icon><CircleCheck /></el-icon>
+            已掌握
+          </el-tag>
+        </div>
+
+        <!-- 状态显示 -->
+        <div class="status-display">
+          <div class="status-item">
+            <span class="status-label">当前状态</span>
+            <span
+              class="status-value"
+              :class="getStatusClass(problem.progress?.status || 'not_started')"
+            >
+              {{ getStatusText(problem.progress?.status || 'not_started') }}
+            </span>
+          </div>
+          
+          <div class="status-item" v-if="problem.progress?.status !== 'not_started'">
+            <span class="status-label">复习进度</span>
+            <div class="review-progress-wrapper">
+              <el-progress
+                :percentage="reviewProgress.percentage"
+                :stroke-width="12"
+                :status="problem.progress?.status === 'mastered' ? 'success' : undefined"
+              >
+                <span class="progress-text">{{ reviewProgress.completed }}/{{ reviewProgress.total }} 轮</span>
+              </el-progress>
+            </div>
+          </div>
+        </div>
+
+        <!-- 高级选项（手动调整） -->
+        <div class="advanced-section">
+          <el-link type="info" :underline="false" @click="showAdvanced = !showAdvanced">
+            <el-icon><Setting /></el-icon>
+            {{ showAdvanced ? '收起' : '手动调整状态' }}
+          </el-link>
+          
+          <el-collapse-transition>
+            <div v-if="showAdvanced" class="advanced-form">
+              <el-alert
+                type="info"
+                :closable="false"
+                show-icon
+              >
+                <template #title>
+                  手动调整仅在特殊情况下使用，推荐使用"标记完成"按钮
+                </template>
+              </el-alert>
+              <el-form :inline="true" style="margin-top: 16px">
+                <el-form-item label="状态">
+                  <el-select v-model="manualStatus" style="width: 140px">
+                    <el-option label="未开始" value="not_started" />
+                    <el-option label="进行中" value="in_progress" />
+                    <el-option label="已掌握" value="mastered" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="掌握程度">
+                  <el-input-number v-model="manualMastery" :min="0" :max="5" />
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="updateProgressManually">保存</el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-collapse-transition>
+        </div>
       </div>
 
       <!-- 笔记编辑 -->
@@ -371,6 +488,69 @@ const getStatusText = (status: string) => {
 
 .progress-section {
   margin-bottom: 20px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.progress-header .card-title {
+  margin-bottom: 0;
+}
+
+.status-display {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.status-value {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.status-value.status-not_started {
+  color: var(--text-secondary);
+}
+
+.status-value.status-in_progress {
+  color: var(--primary-color);
+}
+
+.status-value.status-mastered {
+  color: var(--success-color);
+}
+
+.review-progress-wrapper {
+  width: 200px;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.advanced-section {
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.advanced-form {
+  margin-top: 16px;
 }
 
 .note-section {

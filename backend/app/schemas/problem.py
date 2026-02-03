@@ -23,6 +23,9 @@ class ProgressInProblem(BaseModel):
     status: str = "not_started"
     attempt_count: int = 0
     mastery_level: int = 0
+    # 复习进度信息
+    completed_reviews: int = 0
+    total_reviews: int = 5
     
     class Config:
         from_attributes = True

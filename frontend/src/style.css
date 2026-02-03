@@ -167,14 +167,9 @@ body {
   color: #909399;
 }
 
-.status-attempted {
+.status-in_progress {
   background: #ecf5ff;
   color: #409EFF;
-}
-
-.status-reviewing {
-  background: #fdf6ec;
-  color: #E6A23C;
 }
 
 .status-mastered {

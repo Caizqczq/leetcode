@@ -44,7 +44,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     
     # 状态统计
     status_stats = StatusStats()
-    for status in ["not_started", "attempted", "reviewing", "mastered"]:
+    for status in ["not_started", "in_progress", "mastered"]:
         result = await db.execute(
             select(func.count(Progress.id)).where(Progress.status == status)
         )

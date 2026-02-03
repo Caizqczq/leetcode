@@ -52,17 +52,6 @@ function goToProblem(problemId: number) {
 const getDifficultyClass = (difficulty: string) => {
   return `difficulty-${difficulty?.toLowerCase()}`
 }
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    'not_started': '未开始',
-    'attempted': '已尝试',
-    'reviewing': '复习中',
-    'mastered': '已掌握',
-  }
-  return map[status] || status
-}
 </script>
 
 <template>
@@ -223,18 +212,14 @@ const getStatusText = (status: string) => {
         刷题状态统计
       </h3>
       
-      <div class="status-grid">
+      <div class="status-grid status-grid-3">
         <div class="status-item">
           <div class="status-value">{{ stats.status_stats.not_started }}</div>
           <div class="status-label">未开始</div>
         </div>
         <div class="status-item">
-          <div class="status-value" style="color: #409EFF">{{ stats.status_stats.attempted }}</div>
-          <div class="status-label">已尝试</div>
-        </div>
-        <div class="status-item">
-          <div class="status-value" style="color: #E6A23C">{{ stats.status_stats.reviewing }}</div>
-          <div class="status-label">复习中</div>
+          <div class="status-value" style="color: #409EFF">{{ stats.status_stats.in_progress }}</div>
+          <div class="status-label">进行中</div>
         </div>
         <div class="status-item">
           <div class="status-value" style="color: #67C23A">{{ stats.status_stats.mastered }}</div>
@@ -459,6 +444,10 @@ const getStatusText = (status: string) => {
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   text-align: center;
+}
+
+.status-grid.status-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .status-value {

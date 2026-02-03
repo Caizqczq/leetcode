@@ -2,6 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { problemApi, progressApi, tagApi } from '../api'
 
+export interface Progress {
+  status: string
+  attempt_count: number
+  mastery_level: number
+  completed_reviews: number
+  total_reviews: number
+}
+
 export interface Problem {
   id: number
   leetcode_id: number
@@ -10,11 +18,7 @@ export interface Problem {
   difficulty: string
   category: string
   url: string
-  progress: {
-    status: string
-    attempt_count: number
-    mastery_level: number
-  } | null
+  progress: Progress | null
   tags: Array<{
     id: number
     name: string
@@ -81,15 +85,36 @@ export const useProblemStore = defineStore('problem', () => {
     tags.value = res
   }
 
-  // 更新进度
-  async function updateProgress(problemId: number, status: string, masteryLevel: number) {
-    await progressApi.update(problemId, { status, mastery_level: masteryLevel })
+  // 一键完成（推荐使用）
+  async function markComplete(problemId: number) {
+    const res: any = await progressApi.complete(problemId)
     // 更新本地状态
     const problem = problems.value.find(p => p.id === problemId)
-    if (problem && problem.progress) {
-      problem.progress.status = status
-      problem.progress.mastery_level = masteryLevel
-      problem.progress.attempt_count += 1
+    if (problem) {
+      problem.progress = {
+        status: res.status,
+        attempt_count: res.attempt_count,
+        mastery_level: res.mastery_level,
+        completed_reviews: res.completed_reviews,
+        total_reviews: res.total_reviews,
+      }
+    }
+    return res
+  }
+
+  // 手动更新进度（高级选项）
+  async function updateProgress(problemId: number, status: string, masteryLevel: number) {
+    const res: any = await progressApi.update(problemId, { status, mastery_level: masteryLevel })
+    // 更新本地状态
+    const problem = problems.value.find(p => p.id === problemId)
+    if (problem) {
+      problem.progress = {
+        status: res.status,
+        attempt_count: res.attempt_count,
+        mastery_level: res.mastery_level,
+        completed_reviews: res.completed_reviews || 0,
+        total_reviews: res.total_reviews || 5,
+      }
     }
   }
 
@@ -115,6 +140,7 @@ export const useProblemStore = defineStore('problem', () => {
     fetchProblems,
     fetchCategories,
     fetchTags,
+    markComplete,
     updateProgress,
     resetFilters,
   }

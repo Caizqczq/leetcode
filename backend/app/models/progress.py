@@ -14,14 +14,14 @@ class Progress(Base):
     id = Column(Integer, primary_key=True, index=True)
     problem_id = Column(Integer, ForeignKey("problems.id"), unique=True, nullable=False)
     
-    # 状态: not_started / attempted / reviewing / mastered
+    # 状态: not_started / in_progress / mastered
     status = Column(String(20), default="not_started", comment="做题状态")
     
     # 尝试次数
     attempt_count = Column(Integer, default=0, comment="尝试次数")
     
-    # 掌握程度 1-5
-    mastery_level = Column(Integer, default=0, comment="掌握程度 1-5")
+    # 掌握程度（已完成复习轮次）0-5
+    mastery_level = Column(Integer, default=0, comment="掌握程度(复习轮次) 0-5")
     
     # 时间记录
     first_solved = Column(DateTime, nullable=True, comment="首次完成时间")

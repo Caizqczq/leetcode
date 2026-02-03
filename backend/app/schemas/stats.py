@@ -12,8 +12,7 @@ class DifficultyStats(BaseModel):
 class StatusStats(BaseModel):
     """状态统计"""
     not_started: int = 0
-    attempted: int = 0
-    reviewing: int = 0
+    in_progress: int = 0
     mastered: int = 0
 
 

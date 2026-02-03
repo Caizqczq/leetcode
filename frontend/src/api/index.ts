@@ -38,7 +38,10 @@ export const problemApi = {
 
 // 进度相关 API
 export const progressApi = {
-  // 更新进度
+  // 一键完成（推荐使用）
+  complete: (problemId: number) => api.post(`/progress/${problemId}/complete`),
+
+  // 手动更新进度（高级选项）
   update: (problemId: number, data: { status: string; mastery_level: number }) =>
     api.put(`/progress/${problemId}`, data),
 
