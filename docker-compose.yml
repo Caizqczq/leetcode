@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build: ./backend
+    container_name: leetcode-backend
+    restart: always
+    volumes:
+      - ./data:/app/data  # 持久化数据库
+      - sqlite_data:/app   # SQLite 数据库文件
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./leetcode.db
+    networks:
+      - leetcode-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端服务
+  frontend:
+    build: ./frontend
+    container_name: leetcode-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - leetcode-network
+
+networks:
+  leetcode-network:
+    driver: bridge
+
+volumes:
+  sqlite_data:
