@@ -7,6 +7,19 @@ __pycache__/
 venv/
 ENV/
 .env
+.venv/
+
+# Python 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+.cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
 
 # 数据库
 *.db
@@ -22,6 +35,17 @@ ENV/
 node_modules/
 dist/
 .npm
+.npmrc
+.pnpm-store/
+.eslintcache
+.stylelintcache
+yarn-error.log
+pnpm-debug.log
+npm-debug.log
+
+# 打包产物
+backend/static/
+*.tar.gz
 
 # 日志
 *.log
@@ -37,3 +61,4 @@ Thumbs.db
 # 本地配置
 .env.local
 .env.*.local
+.envrc
