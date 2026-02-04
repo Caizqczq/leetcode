@@ -47,6 +47,7 @@ export const useProblemStore = defineStore('problem', () => {
     status: '',
     search: '',
     tag_id: undefined as number | undefined,
+    sort_by: 'default' as 'default' | 'leetcode_id',  // default=官方顺序, leetcode_id=题号
   })
 
   // 计算属性
@@ -64,6 +65,7 @@ export const useProblemStore = defineStore('problem', () => {
       if (filters.value.status) params.status = filters.value.status
       if (filters.value.search) params.search = filters.value.search
       if (filters.value.tag_id) params.tag_id = filters.value.tag_id
+      if (filters.value.sort_by) params.sort_by = filters.value.sort_by
 
       const res: any = await problemApi.getList(params)
       problems.value = res.items
@@ -126,6 +128,7 @@ export const useProblemStore = defineStore('problem', () => {
       status: '',
       search: '',
       tag_id: undefined,
+      sort_by: 'default',
     }
   }
 

@@ -120,8 +120,16 @@ function getRoundText(round: number) {
         </div>
         
         <div v-if="store.todayReviews.length === 0" class="empty-state">
-          <el-icon size="48" color="#c0c4cc"><CircleCheck /></el-icon>
-          <p>今日复习任务已完成！</p>
+          <el-icon size="48" color="#67C23A"><CircleCheck /></el-icon>
+          <p>今日无待复习题目</p>
+          <p v-if="store.upcomingReviews.length > 0" class="empty-hint">
+            明天有 {{ store.upcomingReviews.filter(r => {
+              const d = new Date(r.scheduled_date)
+              const tomorrow = new Date()
+              tomorrow.setDate(tomorrow.getDate() + 1)
+              return d.toDateString() === tomorrow.toDateString()
+            }).length }} 道题待复习
+          </p>
         </div>
         
         <div class="review-list" v-else>
@@ -307,6 +315,11 @@ function getRoundText(round: number) {
 .empty-state p {
   margin-top: 12px;
   font-size: 14px;
+}
+
+.empty-hint {
+  color: var(--primary-color);
+  font-size: 13px;
 }
 
 .info-card {

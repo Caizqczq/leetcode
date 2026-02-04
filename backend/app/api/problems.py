@@ -39,6 +39,7 @@ async def get_problems(
     status: Optional[str] = Query(None, description="状态筛选: not_started/in_progress/mastered"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     tag_id: Optional[int] = Query(None, description="标签ID筛选"),
+    sort_by: Optional[str] = Query("default", description="排序方式: default(官方顺序)/leetcode_id(题号)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -78,8 +79,12 @@ async def get_problems(
     if status:
         query = query.join(Progress).where(Progress.status == status)
     
-    # 排序（按 id 保持官方顺序）
-    query = query.order_by(Problem.id)
+    # 排序
+    if sort_by == "leetcode_id":
+        query = query.order_by(Problem.leetcode_id)
+    else:
+        # 默认按 id 保持官方顺序
+        query = query.order_by(Problem.id)
     
     # 计算总数
     count_query = select(func.count()).select_from(query.subquery())
@@ -138,6 +143,8 @@ async def get_problems(
                 status=problem.progress.status,
                 attempt_count=problem.progress.attempt_count,
                 mastery_level=problem.progress.mastery_level,
+                first_solved=problem.progress.first_solved,
+                last_attempt=problem.progress.last_attempt,
                 completed_reviews=stats['completed'],
                 total_reviews=stats['total'] if stats['total'] > 0 else 5,
             )

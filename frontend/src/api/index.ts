@@ -25,6 +25,7 @@ export const problemApi = {
     status?: string
     search?: string
     tag_id?: number
+    sort_by?: string
     page?: number
     page_size?: number
   }) => api.get('/problems', { params }),

@@ -1,4 +1,5 @@
 """题目数据模式"""
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -23,6 +24,9 @@ class ProgressInProblem(BaseModel):
     status: str = "not_started"
     attempt_count: int = 0
     mastery_level: int = 0
+    # 时间信息
+    first_solved: Optional[datetime] = None
+    last_attempt: Optional[datetime] = None
     # 复习进度信息
     completed_reviews: int = 0
     total_reviews: int = 5

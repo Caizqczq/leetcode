@@ -32,7 +32,7 @@ async def get_review_stats(db: AsyncSession, progress_id: int) -> tuple[int, int
     return completed, total if total > 0 else 5
 
 
-def build_progress_response(progress: Progress, completed_reviews: int, total_reviews: int) -> dict:
+def build_progress_response(progress: Progress, completed_reviews: int, total_reviews: int, is_first_complete: bool = False) -> dict:
     """构建进度响应，包含复习进度信息"""
     return {
         "id": progress.id,
@@ -44,6 +44,7 @@ def build_progress_response(progress: Progress, completed_reviews: int, total_re
         "last_attempt": progress.last_attempt,
         "completed_reviews": completed_reviews,
         "total_reviews": total_reviews,
+        "is_first_complete": is_first_complete,
     }
 
 
@@ -89,7 +90,7 @@ async def mark_complete(
     # 获取复习统计
     completed_reviews, total_reviews = await get_review_stats(db, progress.id)
     
-    return build_progress_response(progress, completed_reviews, total_reviews)
+    return build_progress_response(progress, completed_reviews, total_reviews, is_first_complete=is_first_time)
 
 
 @router.put("/{problem_id}", response_model=ProgressResponse)

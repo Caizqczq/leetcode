@@ -26,6 +26,8 @@ class ProgressResponse(ProgressBase):
     # 新增: 复习进度信息
     completed_reviews: int = Field(default=0, description="已完成复习轮次")
     total_reviews: int = Field(default=5, description="总复习轮次")
+    # 标记是否首次完成（用于前端显示不同提示）
+    is_first_complete: bool = Field(default=False, description="是否首次完成")
     
     class Config:
         from_attributes = True

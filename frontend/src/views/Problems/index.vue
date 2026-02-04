@@ -22,6 +22,11 @@ const difficultyOptions = [
   { label: '困难', value: 'Hard' },
 ]
 
+const sortOptions = [
+  { label: '官方顺序', value: 'default' },
+  { label: '题号排序', value: 'leetcode_id' },
+]
+
 // 加载状态
 const completingId = ref<number | null>(null)
 
@@ -69,8 +74,14 @@ const handleComplete = async (row: any) => {
     )
 
     completingId.value = row.id
-    await store.markComplete(row.id)
-    ElMessage.success('已完成！系统已自动生成复习计划')
+    const result = await store.markComplete(row.id)
+    if (result.is_first_complete) {
+      ElMessage.success('首次完成！明天开始第一轮复习')
+    } else if (result.status === 'mastered') {
+      ElMessage.success('恭喜！已完成全部复习，题目已掌握')
+    } else {
+      ElMessage.success(`练习完成！复习进度 ${result.completed_reviews}/${result.total_reviews} 轮`)
+    }
   } catch (error: any) {
     // 用户取消操作不提示错误
     if (error !== 'cancel') {
@@ -165,6 +176,17 @@ const openLeetCode = (url: string) => {
           <el-select v-model="store.filters.status" style="width: 120px" @change="handleSearch">
             <el-option
               v-for="opt in statusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="排序">
+          <el-select v-model="store.filters.sort_by" style="width: 120px" @change="handleSearch">
+            <el-option
+              v-for="opt in sortOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
