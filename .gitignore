@@ -45,6 +45,7 @@ npm-debug.log
 
 # 打包产物
 backend/static/
+leetcode-deploy/
 *.tar.gz
 
 # 日志
